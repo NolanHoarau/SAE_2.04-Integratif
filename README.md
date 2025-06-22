@@ -60,3 +60,60 @@ Switch(config)# monitor session 2 source vlan 100
 - `destination` : c'est le port où est branché l'outil de capture
 
 `sh monitor session all`
+
+---
+
+## Récupération des informations mqtt dans une base de donnée avec python
+
+```bash
+sudo apt install libmariadb-dev
+sudo apt install mariadb-server
+sudo systemctl start mariadb
+sudo systemctl enable mariadb
+```
+
+Creation d'un environnement virtuel pour le script python permettant de récupérer les informations et les mettres dans une base de données mariadb.
+
+```bash
+python3 -m venv monenv
+```
+activation de l'environnement virtuel :
+
+```bash
+source monenv/bin/activate
+```
+Installation des paquets python :
+
+```bash
+(monenv) pip install paho-mqtt mariadb
+```
+mettre le programme python dans un fichier .py dans l'environnement puis lancer Mariadb :
+
+```bash
+sudo mariadb
+```
+Dans mariadb on créer la database
+
+```sql
+CREATE DATABASE IF NOT EXISTS sae204;
+```
+
+Et créer un user pour la database
+
+```sql
+CREATE USER 'toto'@'localhost' IDENTIFIED BY 'toto';
+GRANT ALL PRIVILEGES ON sae204.* TO 'toto'@'localhost';
+FLUSH PRIVILEGES;
+```
+Dans le script python :
+
+....
+
+Enfin lancer le script
+
+```bash
+python3 ./script.py
+```
+
+---
+
