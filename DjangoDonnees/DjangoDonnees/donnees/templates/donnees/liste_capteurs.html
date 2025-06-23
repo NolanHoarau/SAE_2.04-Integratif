@@ -1,0 +1,8 @@
+<h1>Liste des Capteurs</h1>
+<ul>
+  {% for capteur in capteurs %}
+    <li>
+      <a href="{% url 'details_capteur' capteur.id %}">{{ capteur.nom }} - {{ capteur.emplacement }}</a>
+    </li>
+  {% endfor %}
+</ul>

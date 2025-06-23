@@ -1,0 +1,9 @@
+<h2>{{ capteur.nom }} ({{ capteur.emplacement }})</h2>
+<a href="{% url 'modifier_capteur' capteur.id %}">Modifier</a>
+
+<table border="1">
+  <tr><th>Valeur</th><th>Date</th></tr>
+  {% for donnee in donnees %}
+    <tr><td>{{ donnee.valeur }}</td><td>{{ donnee.horodatage }}</td></tr>
+  {% endfor %}
+</table>
