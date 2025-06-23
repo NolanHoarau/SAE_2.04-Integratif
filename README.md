@@ -5,8 +5,6 @@
 ---
 ## Config Switch-rt12
 
-Mot de passe enable : **conomejo**
-
 ```
 Switch-rt12(config) # vlan 100
 	name Voix
