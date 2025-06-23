@@ -19,46 +19,70 @@ except mariadb.Error as e:
     print(f"Erreur de connexion à MariaDB: {e}")
     exit(1)
 
-# Création de la table si elle n'existe pas
+# Création des tables
 cursor.execute("""
-    CREATE TABLE IF NOT EXISTS mqtt_data (
+    CREATE TABLE IF NOT EXISTS capteurs (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        topic VARCHAR(255),
-        message TEXT,
-        timestamp DATETIME
+        capteur_id VARCHAR(255) UNIQUE,
+        lieu VARCHAR(255)
     )
 """)
 
-# Callback quand on reçoit un message MQTT
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS donnees (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        capteur_id INT,
+        temperature FLOAT,
+        timestamp DATETIME,
+        FOREIGN KEY (capteur_id) REFERENCES capteurs(id)
+    )
+""")
+
+# Callback MQTT
 def on_message(client, userdata, msg):
     try:
-        topic = msg.topic
-        payload = msg.payload.decode("utf-8")
+        payload = json.loads(msg.payload.decode("utf-8"))
+        capteur_id_str = payload.get("capteur_id")
+        lieu = payload.get("lieu")
+        temperature = float(payload.get("temperature"))
         timestamp = datetime.now()
 
-        print(f"Reçu sur {topic} : {payload}")
+        if not capteur_id_str or lieu is None or temperature is None:
+            print("Message incomplet, ignoré.")
+            return
 
-        # Insertion dans la base de données
+        # Vérifier si le capteur existe déjà
+        cursor.execute("SELECT id FROM capteurs WHERE capteur_id = ?", (capteur_id_str,))
+        result = cursor.fetchone()
+
+        if result:
+            capteur_db_id = result[0]
+        else:
+            cursor.execute(
+                "INSERT INTO capteurs (capteur_id, lieu) VALUES (?, ?)",
+                (capteur_id_str, lieu)
+            )
+            conn.commit()
+            capteur_db_id = cursor.lastrowid
+
+        # Insertion de la donnée
         cursor.execute(
-            "INSERT INTO mqtt_data (topic, message, timestamp) VALUES (?, ?, ?)",
-            (topic, payload, timestamp)
+            "INSERT INTO donnees (capteur_id, temperature, timestamp) VALUES (?, ?, ?)",
+            (capteur_db_id, temperature, timestamp)
         )
         conn.commit()
+        print(f"Donnée insérée pour {capteur_id_str} à {timestamp} : {temperature}°C")
+
     except Exception as e:
         print(f"Erreur lors du traitement du message : {e}")
 
-# Configuration du client MQTT
+# Configuration MQTT
 client = mqtt.Client()
 client.on_message = on_message
-
-# Connexion au broker
 client.connect("test.mosquitto.org", 1883, 60)
-
-# Souscription aux topics
 client.subscribe("IUT/Colmar2025/SAE2.04/Maison1")
 client.subscribe("IUT/Colmar2025/SAE2.04/Maison2")
 
-# Boucle infinie pour écouter les messages
+# Écoute
 print("En attente de messages MQTT...")
 client.loop_forever()
-
