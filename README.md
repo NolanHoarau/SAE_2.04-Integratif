@@ -69,6 +69,7 @@ sudo apt install mariadb-server
 sudo systemctl start mariadb
 sudo systemctl enable mariadb
 sudo apt install python3-pip
+sudo apt install python3.11-venv
 ```
 
 Creation d'un environnement virtuel pour le script python permettant de récupérer les informations et les mettres dans une base de données mariadb.
