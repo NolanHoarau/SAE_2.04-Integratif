@@ -70,6 +70,7 @@ sudo apt install libmariadb-dev
 sudo apt install mariadb-server
 sudo systemctl start mariadb
 sudo systemctl enable mariadb
+sudo apt install python3-pip
 ```
 
 Creation d'un environnement virtuel pour le script python permettant de récupérer les informations et les mettres dans une base de données mariadb.
