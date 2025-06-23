@@ -3,7 +3,7 @@ import mariadb
 import json
 from datetime import datetime
 
-# Configuration de la base de données
+# Configuration DB
 db_config = {
     "host": "localhost",
     "user": "toto",
@@ -11,7 +11,7 @@ db_config = {
     "database": "sae204"
 }
 
-# Connexion à la base de données
+# Connexion DB
 try:
     conn = mariadb.connect(**db_config)
     cursor = conn.cursor()
@@ -21,68 +21,81 @@ except mariadb.Error as e:
 
 # Création des tables
 cursor.execute("""
-    CREATE TABLE IF NOT EXISTS capteurs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        capteur_id VARCHAR(255) UNIQUE,
-        lieu VARCHAR(255)
+    CREATE TABLE IF NOT EXISTS capteur (
+        capteur_id INT AUTO_INCREMENT PRIMARY KEY,
+        capteur_nom VARCHAR(100),
+        piece VARCHAR(100),
+        emplacement VARCHAR(100)
     )
 """)
 
 cursor.execute("""
-    CREATE TABLE IF NOT EXISTS donnees (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        capteur_id INT,
+    CREATE TABLE IF NOT EXISTS data (
+        data_id INT AUTO_INCREMENT PRIMARY KEY,
+        datetime DATETIME,
         temperature FLOAT,
-        timestamp DATETIME,
-        FOREIGN KEY (capteur_id) REFERENCES capteurs(id)
+        capteur_id INT,
+        FOREIGN KEY(capteur_id) REFERENCES capteur(capteur_id)
     )
 """)
+
+# Fonction pour obtenir l'ID du capteur (ou le créer)
+def get_or_create_capteur_id(capteur_nom, piece, emplacement):
+    cursor.execute(
+        "SELECT capteur_id FROM capteur WHERE capteur_nom=? AND piece=? AND emplacement=?",
+        (capteur_nom, piece, emplacement)
+    )
+    row = cursor.fetchone()
+    if row:
+        return row[0]
+    else:
+        cursor.execute(
+            "INSERT INTO capteur (capteur_nom, piece, emplacement) VALUES (?, ?, ?)",
+            (capteur_nom, piece, emplacement)
+        )
+        conn.commit()
+        return cursor.lastrowid
 
 # Callback MQTT
 def on_message(client, userdata, msg):
     try:
-        payload = json.loads(msg.payload.decode("utf-8"))
-        capteur_id_str = payload.get("capteur_id")
-        lieu = payload.get("lieu")
-        temperature = float(payload.get("temperature"))
-        timestamp = datetime.now()
+        topic = msg.topic
+        payload = msg.payload.decode("utf-8")
+        print(f"Reçu sur {topic} : {payload}")
 
-        if not capteur_id_str or lieu is None or temperature is None:
-            print("Message incomplet, ignoré.")
-            return
+        # Parsing du payload (ex: Id=A72E3F6B79BB,piece=chambre1,date=23/06/2025,time=10:11:27,temp=14.25)
+        data_dict = dict(part.split("=") for part in payload.split(","))
+        
+        capteur_nom = data_dict["Id"]
+        piece = data_dict["piece"]
+        date_str = data_dict["date"]
+        time_str = data_dict["time"]
+        temp = float(data_dict["temp"])
+        emplacement = topic.split("/")[-1]  # "Maison1" ou "Maison2"
 
-        # Vérifier si le capteur existe déjà
-        cursor.execute("SELECT id FROM capteurs WHERE capteur_id = ?", (capteur_id_str,))
-        result = cursor.fetchone()
+        # Conversion en datetime
+        datetime_str = f"{date_str} {time_str}"
+        timestamp = datetime.strptime(datetime_str, "%d/%m/%Y %H:%M:%S")
 
-        if result:
-            capteur_db_id = result[0]
-        else:
-            cursor.execute(
-                "INSERT INTO capteurs (capteur_id, lieu) VALUES (?, ?)",
-                (capteur_id_str, lieu)
-            )
-            conn.commit()
-            capteur_db_id = cursor.lastrowid
+        # Récupération ou insertion du capteur
+        capteur_id = get_or_create_capteur_id(capteur_nom, piece, emplacement)
 
-        # Insertion de la donnée
+        # Insertion dans la table data
         cursor.execute(
-            "INSERT INTO donnees (capteur_id, temperature, timestamp) VALUES (?, ?, ?)",
-            (capteur_db_id, temperature, timestamp)
+            "INSERT INTO data (datetime, temperature, capteur_id) VALUES (?, ?, ?)",
+            (timestamp, temp, capteur_id)
         )
         conn.commit()
-        print(f"Donnée insérée pour {capteur_id_str} à {timestamp} : {temperature}°C")
-
     except Exception as e:
         print(f"Erreur lors du traitement du message : {e}")
 
-# Configuration MQTT
+# Configuration client MQTT
 client = mqtt.Client()
 client.on_message = on_message
+
 client.connect("test.mosquitto.org", 1883, 60)
 client.subscribe("IUT/Colmar2025/SAE2.04/Maison1")
 client.subscribe("IUT/Colmar2025/SAE2.04/Maison2")
 
-# Écoute
 print("En attente de messages MQTT...")
 client.loop_forever()
