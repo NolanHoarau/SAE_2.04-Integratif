@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Messages MQTT</title>
+    <link rel="stylesheet" href="{% static 'donnees/style.css' %}">
+</head>
+<body>
+
+<h1>Messages MQTT</h1>
+
+<!-- Formulaire de filtrage côté serveur -->
+<form method="get" class="mb-4" style="margin-bottom: 20px;">
+    <label for="nom">Filtrer par nom :</label>
+    <input type="text" name="nom" id="nom" value="{{ request.GET.nom }}">
+
+    <label for="date">Filtrer par date :</label>
+    <input type="date" name="date" id="date" value="{{ request.GET.date }}">
+
+    <button type="submit">Filtrer</button>
+    <a href="{% url 'messages_mqtt' %}"><button type="button">Réinitialiser</button></a>
+</form>
+
+<!-- Filtre JavaScript -->
+<input type="text" id="searchInput" onkeyup="filterMessages()" placeholder="Recherche rapide par nom...">
+
+<table id="messagesTable">
+    <thead>
+        <tr>
+            <th>Nom du capteur</th>
+            <th>Valeur</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for donnee in donnees %}
+        <tr>
+            <td>{{ donnee.capteur.nom }}</td>
+            <td>{{ donnee.valeur }}</td>
+            <td>{{ donnee.horodatage }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function filterMessages() {
+    const input = document.getElementById("searchInput");
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById("messagesTable");
+    const tr = table.getElementsByTagName("tr");
+    let visible = 0;
+
+    for (let i = 1; i < tr.length; i++) {
+        const td = tr[i].getElementsByTagName("td")[0];
+        if (td) {
+            const txtValue = td.textContent || td.innerText;
+            if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                tr[i].style.display = "";
+                visible++;
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+
+    const noMatchRow = document.getElementById("noMatchRow");
+    if (visible === 0) {
+        if (!noMatchRow) {
+            const row = document.createElement("tr");
+            row.id = "noMatchRow";
+            const cell = document.createElement("td");
+            cell.colSpan = 3;
+            cell.className = "no-match";
+            cell.textContent = "Aucun message trouvé.";
+            row.appendChild(cell);
+            table.querySelector("tbody").appendChild(row);
+        }
+    } else if (noMatchRow) {
+        noMatchRow.remove();
+    }
+}
+</script>
+
+</body>
+</html>

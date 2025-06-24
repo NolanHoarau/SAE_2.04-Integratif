@@ -7,7 +7,7 @@ class Capteur(models.Model):
     def __str__(self):
         return self.nom
 
-class DonneeBrute(models.Model):
+class Donnee(models.Model):
     capteur = models.ForeignKey(Capteur, on_delete=models.CASCADE, related_name='donnees')
     valeur = models.FloatField()
     horodatage = models.DateTimeField(auto_now_add=True)
@@ -15,5 +15,3 @@ class DonneeBrute(models.Model):
     def __str__(self):
         return f"{self.capteur.nom} - {self.horodatage}"
 from django.db import models
-
-# Create your models here.

@@ -1,22 +1,17 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from .models import Capteur
-from .forms import CapteurForm
+from django.shortcuts import render
+from .models import Donnee
 
-def liste_capteurs(request):
-    capteurs = Capteur.objects.all()
-    return render(request, 'donnees/liste_capteurs.html', {'capteurs': capteurs})
 
-def details_capteur(request, id):
-    capteur = get_object_or_404(Capteur, id=id)
-    return render(request, 'donnees/details_capteur.html', {
-        'capteur': capteur,
-        'donnees': capteur.donnees.all()
-    })
+def messages_mqtt(request):
+    nom = request.GET.get("nom", "")
+    date = request.GET.get("date", "")
 
-def modifier_capteur(request, id):
-    capteur = get_object_or_404(Capteur, id=id)
-    form = CapteurForm(request.POST or None, instance=capteur)
-    if form.is_valid():
-        form.save()
-        return redirect('details_capteur', id=capteur.id)
-    return render(request, 'donnees/modifier_capteur.html', {'form': form})
+    donnees = Donnee.objects.all()
+
+    if nom:
+        donnees = donnees.filter(nom__icontains=nom)
+
+    if date:
+        donnees = donnees.filter(date__date=date)  # .date pour ne garder que la partie date
+
+    return render(request, "donnees/messages_mqtt.html", {"donnees": donnees})
